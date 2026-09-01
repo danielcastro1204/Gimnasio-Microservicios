@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sustentación Arquitectura - Microservicios</title>
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ 
+          startOnLoad: true, 
+          theme: 'default',
+          securityLevel: 'loose'
+      });
+    </script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --accent: #0056b3;
+            --border-radius: 12px;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+        .header p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+        .diagram-section {
+            max-width: 1100px;
+            margin: 0 auto 60px auto;
+        }
+        .diagram-title { 
+            font-size: 1.5rem;
+            color: var(--accent); 
+            border-bottom: 2px solid #e1e5ea; 
+            padding-bottom: 12px; 
+            margin-bottom: 15px; 
+        }
+        .description { 
+            font-size: 1rem; 
+            color: var(--text-muted); 
+            margin-bottom: 25px; 
+            line-height: 1.5;
+        }
+        .mermaid-container { 
+            padding: 40px; 
+            background-color: var(--card-bg); 
+            border-radius: var(--border-radius); 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06); 
+            border: 1px solid #e1e5ea;
+            overflow-x: auto; /* Permite scroll si es muy grande, pero NO lo encoge */
+            text-align: center;
+        }
+        pre.mermaid {
+            margin: 0;
+            display: inline-block;
+            min-width: 800px; /* Fuerza a que el diagrama de secuencia no se vuelva diminuto */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Arquitectura de Microservicios: Sistema de Gestión</h1>
+        <p>Modelos estructurales, estratégicos y dinámicos</p>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">0. (Opcional) Antes vs. Después: Transición de Arquitectura</h2>
+        <p class="description">Ancla visual para el inicio de la presentación. Contraste inmediato de la separación de responsabilidades.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                flowchart LR
+                    subgraph Monolito ["Arquitectura Monolítica (Antes)"]
+                        M["&lt;&lt;component&gt;&gt;<br>Gimnasio Monolito<br>(Miembros · Clases · Entrenadores · Equipos<br>todo en un solo JAR)"]
+                        BD_M[("&lt;&lt;database&gt;&gt;<br>BD Única (H2)")]
+                        M --- BD_M
+                    end
+                    
+                    subgraph Microservicios ["Arquitectura de Microservicios (Después)"]
+                        MS1["member-service"]
+                        MS2["class-service"]
+                        MS3["trainer-service"]
+                        MS4["equipment-service"]
+                        
+                        MS1 --- BD1[("memberdb")]
+                        MS2 --- BD2[("classdb")]
+                        MS3 --- BD3[("trainerdb")]
+                        MS4 --- BD4[("equipmentdb")]
+                        
+                        MS2 -. "&lt;&lt;use&gt;&gt;" .-> MS3
+                    end
+                    
+                    Monolito ===>|Refactorización DDD| Microservicios
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">1. Diagrama de Despliegue UML</h2>
+        <p class="description">Vista física: topología formal sin cruce de líneas, puertos documentados y notas aclaratorias técnicas.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                flowchart TB
+                    subgraph Dispositivos ["&lt;&lt;device&gt;&gt; Dispositivos del Cliente"]
+                        UI["Cliente (Postman / Web App)"]
+                    end
+                    
+                    subgraph Servidor ["&lt;&lt;execution environment&gt;&gt; Entorno de Ejecución (Host Local)"]
+                        J1["&lt;&lt;artifact&gt;&gt;<br>member-service.jar<br>(Puerto 8081)"]
+                        J2["&lt;&lt;artifact&gt;&gt;<br>class-service.jar<br>(Puerto 8082)"]
+                        J3["&lt;&lt;artifact&gt;&gt;<br>trainer-service.jar<br>(Puerto 8083)"]
+                        J4["&lt;&lt;artifact&gt;&gt;<br>equipment-service.jar<br>(Puerto 8084)"]
+                        
+                        %% Forzar alineación horizontal
+                        J1 ~~~ J2 ~~~ J3 ~~~ J4
+                    end
+                    
+                    subgraph BD ["Servidores de Bases de Datos"]
+                        DB1[("&lt;&lt;database&gt;&gt;<br>memberdb")]
+                        DB2[("&lt;&lt;database&gt;&gt;<br>classdb")]
+                        DB3[("&lt;&lt;database&gt;&gt;<br>trainerdb")]
+                        DB4[("&lt;&lt;database&gt;&gt;<br>equipmentdb")]
+                        NoteDB["Nota UML: H2 en memoria.<br>Los datos se reinician en<br>cada arranque del servicio."]
+                        
+                        %% Alinear debajo de los artefactos
+                        DB1 ~~~ DB2 ~~~ DB3 ~~~ DB4 ~~~ NoteDB
+                    end
+                    
+                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8081" --> J1
+                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8082" --> J2
+                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8083" --> J3
+                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8084" --> J4
+                    
+                    J1 --- DB1
+                    J2 --- DB2
+                    J3 --- DB3
+                    J4 --- DB4
+                    
+                    J2 -. "&lt;&lt;protocol&gt;&gt; HTTP/REST<br>(Única dependencia de negocio<br>entre microservicios)" .-> J3
+
+                    style NoteDB fill:#fff2cc,stroke:#d6b656,stroke-width:2px,stroke-dasharray: 5 5
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">2. Diagrama de Componentes UML</h2>
+        <p class="description">Vista lógica: Detalle de interfaces expuestas (lollipops) con sus respectivos endpoints y dependencias lógicas.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                flowchart TB
+                    %% Interfaces proporcionadas con endpoints
+                    I_Mem(("API Members<br>POST /api/members<br>GET /api/members"))
+                    I_Class(("API Classes<br>POST /api/classes<br>GET /api/classes"))
+                    I_Train(("API Trainers<br>GET /api/trainers/{id}/exists"))
+                    I_Equip(("API Equipment<br>POST /api/equipment<br>GET /api/equipment"))
+                    
+                    %% Componentes
+                    C_Mem["&lt;&lt;component&gt;&gt; Member Service"]
+                    C_Class["&lt;&lt;component&gt;&gt; Class Service"]
+                    C_Train["&lt;&lt;component&gt;&gt; Trainer Service"]
+                    C_Equip["&lt;&lt;component&gt;&gt; Equipment Service"]
+                    
+                    %% Conexiones a interfaces
+                    I_Mem --- C_Mem
+                    I_Class --- C_Class
+                    I_Train --- C_Train
+                    I_Equip --- C_Equip
+                    
+                    %% Relación de uso (dependency / socket)
+                    C_Class -. "&lt;&lt;use&gt;&gt;" .-> I_Train
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">3. Mapa de Contextos (Domain-Driven Design)</h2>
+        <p class="description">Vista estratégica: Patrones de integración explícitos y clasificación de dominios (Core vs Supporting).</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                flowchart LR
+                    subgraph BC1 ["Bounded Context: Membership"]
+                        A1["Aggregate: Miembro<br>(Generic Subdomain - Separate Ways)"]
+                    end
+                    
+                    subgraph BC2 ["Bounded Context: Scheduling"]
+                        A2["Aggregate: Clase<br>(Core Domain)"]
+                    end
+                    
+                    subgraph BC3 ["Bounded Context: Coaching"]
+                        A3["Aggregate: Entrenador<br>(Supporting Domain)"]
+                    end
+                    
+                    subgraph BC4 ["Bounded Context: Inventory"]
+                        A4["Aggregate: Equipo<br>(Generic Subdomain - Separate Ways)"]
+                    end
+                    
+                    %% Relaciones DDD explícitas
+                    BC2 -- "Downstream (C) <br> Consume datos <br> (Customer/Supplier)" --> BC3
+                    BC3 -. "Upstream (S) <br> Provee verificación <br> (Customer/Supplier)" .- BC2
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">4. Diagrama de Secuencia (Comportamiento Dinámico)</h2>
+        <p class="description">Vista dinámica: Flujo de peticiones HTTP/REST y validación sincrónica entre microservicios.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                sequenceDiagram
+                    autonumber
+                    actor Cliente
+                    participant MS as Class Service
+                    participant TS as Trainer Service
+                    participant DB as classdb
+
+                    Cliente->>MS: POST /api/classes
+                    MS->>TS: GET /api/trainers/{id}/exists
+
+                    alt Trainer exists
+                        TS-->>MS: 200 OK
+                        MS->>DB: save(newClass)
+                        DB-->>MS: entity saved
+                        MS-->>Cliente: 201 Created
+                    else Trainer missing
+                        TS-->>MS: 404 Not Found
+                        MS-->>Cliente: 400 Bad Request
+                    end
+            </pre>
+        </div>
+    </div>
+
+</body>
+</html>
