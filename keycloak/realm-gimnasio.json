@@ -1,0 +1,116 @@
+{
+  "realm": "gimnasio",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+
+  "roles": {
+    "realm": [
+      { "name": "ROLE_ADMIN", "description": "Administrador del gimnasio. Acceso total a los 4 microservicios." },
+      { "name": "ROLE_TRAINER", "description": "Entrenador. Programa clases, consulta miembros/equipos, se registra a si mismo." },
+      { "name": "ROLE_MEMBER", "description": "Miembro del gimnasio. Consulta clases, entrenadores y equipos disponibles." }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "member-service",
+      "name": "Microservicio de Miembros",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "secret": "member-service-secret",
+      "enabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "equipment-service",
+      "name": "Microservicio de Equipos",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "secret": "equipment-service-secret",
+      "enabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "trainer-service",
+      "name": "Microservicio de Entrenadores",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "secret": "trainer-service-secret",
+      "enabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "class-service",
+      "name": "Microservicio de Clases",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": false,
+      "secret": "class-service-secret",
+      "enabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    },
+    {
+      "clientId": "gimnasio-client",
+      "name": "Cliente de pruebas (Postman/cURL)",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "enabled": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:8081/*", "http://localhost:8082/*", "http://localhost:8083/*", "http://localhost:8084/*"],
+      "webOrigins": ["*"]
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin1",
+      "enabled": true,
+      "email": "admin1@gimnasio.com",
+      "firstName": "Ana",
+      "lastName": "Administradora",
+      "credentials": [{ "type": "password", "value": "Admin123!", "temporary": false }],
+      "realmRoles": ["ROLE_ADMIN"]
+    },
+    {
+      "username": "trainer1",
+      "enabled": true,
+      "email": "trainer1@gimnasio.com",
+      "firstName": "Carlos",
+      "lastName": "Entrenador",
+      "credentials": [{ "type": "password", "value": "Trainer123!", "temporary": false }],
+      "realmRoles": ["ROLE_TRAINER"]
+    },
+    {
+      "username": "member1",
+      "enabled": true,
+      "email": "member1@gimnasio.com",
+      "firstName": "Laura",
+      "lastName": "Miembro",
+      "credentials": [{ "type": "password", "value": "Member123!", "temporary": false }],
+      "realmRoles": ["ROLE_MEMBER"]
+    },
+    {
+      "username": "service-account-class-service",
+      "enabled": true,
+      "serviceAccountClientId": "class-service",
+      "realmRoles": ["ROLE_ADMIN"]
+    }
+  ]
+}
