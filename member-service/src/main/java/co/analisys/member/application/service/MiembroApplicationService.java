@@ -3,6 +3,7 @@ package co.analisys.member.application.service;
 import co.analisys.member.application.dto.MiembroDTO;
 import co.analisys.member.domain.model.Miembro;
 import co.analisys.member.domain.repository.MiembroRepository;
+import co.analisys.member.domain.service.MemberEventPublisherPort;
 import co.analisys.member.domain.service.MiembroDomainService;
 import co.analisys.member.infrastructure.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
@@ -20,11 +21,14 @@ public class MiembroApplicationService {
 
     private final MiembroRepository miembroRepository;
     private final MiembroDomainService miembroDomainService;
+    private final MemberEventPublisherPort memberEventPublisherPort;
 
     public MiembroApplicationService(MiembroRepository miembroRepository,
-                                      MiembroDomainService miembroDomainService) {
+                                      MiembroDomainService miembroDomainService,
+                                      MemberEventPublisherPort memberEventPublisherPort) {
         this.miembroRepository = miembroRepository;
         this.miembroDomainService = miembroDomainService;
+        this.memberEventPublisherPort = memberEventPublisherPort;
     }
 
     @Transactional
@@ -32,6 +36,7 @@ public class MiembroApplicationService {
         miembroDomainService.validarEmailUnico(dto.getEmail());
         Miembro miembro = toEntity(dto);
         Miembro guardado = miembroRepository.save(miembro);
+        memberEventPublisherPort.publicarRegistro(guardado);
         return toDTO(guardado);
     }
 

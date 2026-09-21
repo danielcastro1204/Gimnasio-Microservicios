@@ -28,4 +28,9 @@ public class ClaseDomainService {
                     "No se puede programar la clase: no existe un entrenador con id " + clase.getEntrenadorId());
         }
     }
+
+    /** Las mismas reglas de negocio de la programación aplican al reprogramar una clase existente. */
+    public void validarActualizacion(Clase clase) {
+        validarProgramacion(clase);
+    }
 }

@@ -1,0 +1,40 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: jdbc:h2:mem:notificationdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# notification-service es el suscriptor: declara el exchange topic compartido
+# ("gym.events") junto con SUS PROPIAS colas y bindings. Los publicadores
+# (member-service, class-service) no necesitan saber que estas colas existen.
+gym:
+  events:
+    exchange: ${GYM_EVENTS_EXCHANGE:gym.events}
+
+notification:
+  queues:
+    member-registered: ${QUEUE_MEMBER_REGISTERED:notification.member-registered.queue}
+    class-events: ${QUEUE_CLASS_EVENTS:notification.class-events.queue}
+  routing-keys:
+    member-registered: member.registered
+    class-events: class.*

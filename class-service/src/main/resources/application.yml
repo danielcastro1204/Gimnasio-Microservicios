@@ -18,9 +18,21 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 # URL de trainer-service, configurable por variable de entorno para despliegues
 # distintos a localhost (docker-compose, kubernetes, etc.) sin hardcodear la URL.
 services:
   trainer-service:
     url: ${TRAINER_SERVICE_URL:http://localhost:8083}
+
+# Exchange topic compartido para eventos importantes del gimnasio (pub/sub).
+# class-service publica cambios de horario (creación/actualización/cancelación);
+# no conoce ni le importa quién esté suscrito (ver notification-service).
+gym:
+  events:
+    exchange: ${GYM_EVENTS_EXCHANGE:gym.events}
