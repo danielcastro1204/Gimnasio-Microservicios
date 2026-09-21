@@ -1,7 +1,17 @@
 server:
   port: 8084
 
+security:
+  keycloak:
+    realm: gimnasio
+    auth-server-url: http://localhost:8080
+
 spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${security.keycloak.auth-server-url}/realms/${security.keycloak.realm}
   application:
     name: equipment-service
   datasource:
