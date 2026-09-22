@@ -83,4 +83,15 @@ public class ClaseController {
             @Parameter(description = "Id de la clase", example = "1") @PathVariable Long id) {
         return claseApplicationService.obtenerClasePorId(id);
     }
+
+    @PutMapping("/{id}")
+    public ClaseDTO actualizarClase(@PathVariable Long id, @Valid @RequestBody ClaseDTO clase) {
+        return claseApplicationService.actualizarClase(id, clase);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelarClase(@PathVariable Long id) {
+        claseApplicationService.cancelarClase(id);
+    }
 }

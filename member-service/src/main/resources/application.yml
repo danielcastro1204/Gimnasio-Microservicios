@@ -28,3 +28,14 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# Exchange topic compartido para eventos importantes del gimnasio (pub/sub).
+# member-service solo publica; no conoce ni le importa quién esté suscrito.
+gym:
+  events:
+    exchange: ${GYM_EVENTS_EXCHANGE:gym.events}
