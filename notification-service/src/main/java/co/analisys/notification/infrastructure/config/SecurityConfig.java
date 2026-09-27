@@ -1,4 +1,4 @@
-package co.analisys.member.infrastructure.config;
+package co.analisys.notification.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,9 +10,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Microservicio de Miembros como Resource Server de OAuth2.
- * Consulta de miembros: cualquier rol autenticado.
- * Registro de un miembro nuevo: solo personal (ADMIN o TRAINER).
+ * Microservicio de Notificaciones como Resource Server de OAuth2.
+ * Antes de este cambio, notification-service no tenía Spring Security en el
+ * classpath: /api/notifications quedaba completamente abierto, sin importar
+ * el rol. Como solo expone consultas (es el suscriptor de RabbitMQ, no
+ * recibe altas de negocio), se restringe la lectura a ADMIN y TRAINER, que
+ * son quienes verían el estado de los envíos.
  */
 @Configuration
 @EnableWebSecurity
@@ -33,16 +36,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                // Regla específica de /payments PRIMERO: es información financiera de
-                // TODOS los miembros, no debe quedar cubierta por el permitAll de MEMBER
-                // que aplica más abajo a "/api/members/**" en general.
-                .requestMatchers(HttpMethod.GET, "/api/members/payments/**")
-                    .hasAnyRole("ADMIN", "TRAINER")
-                .requestMatchers(HttpMethod.POST, "/api/members/*/payments")
-                    .hasAnyRole("ADMIN", "TRAINER")
-                .requestMatchers(HttpMethod.GET, "/api/members/**")
-                    .hasAnyRole("ADMIN", "TRAINER", "MEMBER")
-                .requestMatchers(HttpMethod.POST, "/api/members/**")
+                .requestMatchers(HttpMethod.GET, "/api/notifications/**")
                     .hasAnyRole("ADMIN", "TRAINER")
                 .anyRequest().authenticated()
             )
