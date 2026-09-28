@@ -32,9 +32,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/classes/**")
                     .hasAnyRole("ADMIN", "TRAINER", "MEMBER")
                 .requestMatchers(HttpMethod.POST, "/api/classes/**")
+                    .hasAnyRole("ADMIN", "TRAINER")
+                .requestMatchers(HttpMethod.PATCH, "/api/classes/**")
                     .hasAnyRole("ADMIN", "TRAINER")
                 .anyRequest().authenticated()
             )

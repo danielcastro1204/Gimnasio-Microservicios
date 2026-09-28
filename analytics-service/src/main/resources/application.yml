@@ -1,0 +1,66 @@
+server:
+  port: 8086
+
+security:
+  keycloak:
+    realm: gimnasio
+    auth-server-url: http://localhost:8080
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${security.keycloak.auth-server-url}/realms/${security.keycloak.realm}
+  application:
+    name: analytics-service
+  datasource:
+    # BASE EN ARCHIVO (no en memoria) a proposito: aqui se guardan los checkpoints de offsets
+    # de Kafka (Parte 3.4). Si la base fuera en memoria, al reiniciar el servicio se perderian
+    # y siempre se reprocesaria el log completo. Con archivo, el servicio reanuda donde quedo.
+    # Para simular "perdi la base" basta con borrar la carpeta ./data (o llamar al endpoint reset).
+    url: jdbc:h2:file:${ANALYTICS_DB_PATH:./data/analyticsdb}
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    streams:
+      application-id: analytics-entrenamiento-streams
+      properties:
+        # Para la demo: sin cache de registros y commit cada segundo, asi cada dato nuevo
+        # se refleja de inmediato en el store y en el topic resumen-entrenamiento.
+        statestore.cache.max.bytes: 0
+        # Un mensaje que no se pueda deserializar se registra y se omite (no tumba el stream thread).
+        default.deserialization.exception.handler: org.apache.kafka.streams.errors.LogAndContinueExceptionHandler
+        commit.interval.ms: 1000
+        # Carpeta del estado local (RocksDB). Si se pierde, Kafka Streams lo reconstruye
+        # leyendo el topic "changelog" interno que guarda en Kafka.
+        state.dir: ${STREAMS_STATE_DIR:./data/kafka-streams}
+
+gym:
+  kafka:
+    entrenamiento-topic: ${ENTRENAMIENTO_TOPIC:datos-entrenamiento}
+    entrenamiento-particiones: ${ENTRENAMIENTO_PARTICIONES:3}
+    # Mismo valor que member-service (30 dias): ambos servicios declaran el topic igual.
+    entrenamiento-retencion-ms: ${ENTRENAMIENTO_RETENCION_MS:2592000000}
+    resumen-topic: ${RESUMEN_TOPIC:resumen-entrenamiento}
+    resumen-store: resumen-entrenamiento-store
+  analytics:
+    # Ventana del resumen de entrenamiento (dias).
+    ventana-dias: ${VENTANA_DIAS:7}
+    recovery:
+      enabled: ${RECOVERY_ENABLED:true}
+      group-id: analytics-recovery
+      poll-ms: 100
+      # Espera antes de reintentar cuando falla el procesamiento (la app reanuda desde el checkpoint).
+      retry-backoff-ms: 3000

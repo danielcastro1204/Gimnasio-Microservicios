@@ -53,6 +53,18 @@
       "serviceAccountsEnabled": false
     },
     {
+      "clientId": "analytics-service",
+      "name": "Microservicio de Analitica de Entrenamiento",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true,
+      "secret": "analytics-service-secret",
+      "enabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
       "clientId": "class-service",
       "name": "Microservicio de Clases",
       "protocol": "openid-connect",

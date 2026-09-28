@@ -32,6 +32,17 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // Regla específica de /payments PRIMERO: es información financiera de
+                // TODOS los miembros, no debe quedar cubierta por el permitAll de MEMBER
+                // que aplica más abajo a "/api/members/**" en general.
+                .requestMatchers(HttpMethod.GET, "/api/members/payments/**")
+                    .hasAnyRole("ADMIN", "TRAINER")
+                // Un MEMBER puede registrar sus propios datos de entrenamiento (Kafka).
+                .requestMatchers(HttpMethod.POST, "/api/members/*/training-data")
+                    .hasAnyRole("ADMIN", "TRAINER", "MEMBER")
+                .requestMatchers(HttpMethod.POST, "/api/members/*/payments")
+                    .hasAnyRole("ADMIN", "TRAINER")
                 .requestMatchers(HttpMethod.GET, "/api/members/**")
                     .hasAnyRole("ADMIN", "TRAINER", "MEMBER")
                 .requestMatchers(HttpMethod.POST, "/api/members/**")

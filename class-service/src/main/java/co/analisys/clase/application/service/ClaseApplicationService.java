@@ -8,7 +8,9 @@ import co.analisys.clase.domain.service.ClaseDomainService;
 import co.analisys.clase.domain.service.ClaseEventPublisherPort;
 import co.analisys.clase.domain.service.EntrenadorInfo;
 import co.analisys.clase.domain.service.EntrenadorVerificationPort;
+import co.analisys.clase.infrastructure.exception.BusinessRuleException;
 import co.analisys.clase.infrastructure.exception.ResourceNotFoundException;
+import co.analisys.clase.infrastructure.messaging.OcupacionClaseProducer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,15 +32,18 @@ public class ClaseApplicationService {
     private final ClaseDomainService claseDomainService;
     private final EntrenadorVerificationPort entrenadorVerificationPort;
     private final ClaseEventPublisherPort claseEventPublisherPort;
+    private final OcupacionClaseProducer ocupacionClaseProducer;
 
     public ClaseApplicationService(ClaseRepository claseRepository,
                                     ClaseDomainService claseDomainService,
                                     EntrenadorVerificationPort entrenadorVerificationPort,
-                                    ClaseEventPublisherPort claseEventPublisherPort) {
+                                    ClaseEventPublisherPort claseEventPublisherPort,
+                                    OcupacionClaseProducer ocupacionClaseProducer) {
         this.claseRepository = claseRepository;
         this.claseDomainService = claseDomainService;
         this.entrenadorVerificationPort = entrenadorVerificationPort;
         this.claseEventPublisherPort = claseEventPublisherPort;
+        this.ocupacionClaseProducer = ocupacionClaseProducer;
     }
 
     @Transactional
@@ -72,6 +77,31 @@ public class ClaseApplicationService {
         claseEventPublisherPort.publicarCancelacion(existente);
     }
 
+    /**
+     * Caso de uso de la Parte 3.1 del taller: actualiza cuántos asistentes
+     * hay ahora mismo en una clase y publica el cambio en el topic Kafka
+     * "ocupacion-clases" para que notification-service alimente su dashboard
+     * en tiempo real.
+     */
+    @Transactional
+    public ClaseDTO actualizarOcupacion(Long id, int nuevaOcupacion) {
+        Clase clase = claseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe una clase con id: " + id));
+
+        if (nuevaOcupacion > clase.getCapacidadMaxima()) {
+            throw new BusinessRuleException(
+                    "La ocupación (" + nuevaOcupacion + ") no puede superar la capacidad máxima (" +
+                            clase.getCapacidadMaxima() + ") de la clase " + id);
+        }
+
+        clase.setOcupacionActual(nuevaOcupacion);
+        Clase actualizada = claseRepository.save(clase);
+
+        ocupacionClaseProducer.publicarActualizacion(actualizada);
+
+        return toDTO(actualizada, true);
+    }
+
     public List<ClaseDTO> obtenerTodasClases() {
         return claseRepository.findAll().stream()
                 .map(c -> toDTO(c, true))
@@ -96,6 +126,7 @@ public class ClaseApplicationService {
 
     private ClaseDTO toDTO(Clase c, boolean enriquecer) {
         ClaseDTO dto = new ClaseDTO(c.getId(), c.getNombre(), c.getHorario(), c.getCapacidadMaxima(), c.getEntrenadorId());
+        dto.setOcupacionActual(c.getOcupacionActual());
         if (enriquecer) {
             Optional<EntrenadorInfo> info = entrenadorVerificationPort.obtenerEntrenador(c.getEntrenadorId());
             info.ifPresent(i -> dto.setEntrenador(new EntrenadorInfoDTO(i.getId(), i.getNombre(), i.getEspecialidad())));
