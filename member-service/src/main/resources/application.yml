@@ -28,6 +28,18 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      # Todos los brokers en sync confirman antes de dar el mensaje por escrito:
+      # un dato de entrenamiento no debe perderse si el broker falla.
+      acks: all
+      properties:
+        # analytics-service no tiene co.analisys.member.* en su classpath.
+        spring.json.add.type.headers: false
+        enable.idempotence: true
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -45,3 +57,12 @@ spring:
 gym:
   events:
     exchange: ${GYM_EVENTS_EXCHANGE:gym.events}
+  kafka:
+    # Parte 3.3/3.4 del taller: datos de entrenamiento de los miembros.
+    # Se publica con key = miembroId para que todos los datos de un mismo miembro
+    # caigan en la misma particion (orden garantizado y agregacion por key en Kafka Streams).
+    entrenamiento-topic: ${ENTRENAMIENTO_TOPIC:datos-entrenamiento}
+    entrenamiento-particiones: ${ENTRENAMIENTO_PARTICIONES:3}
+    # Retencion del log: 30 dias. Es lo que permite a analytics-service reconstruir
+    # su estado releyendo el topic desde el inicio si pierde su base de datos.
+    entrenamiento-retencion-ms: ${ENTRENAMIENTO_RETENCION_MS:2592000000}

@@ -42,6 +42,9 @@ public class ClaseDTO {
     @Schema(description = "Datos del entrenador, obtenidos de trainer-service solo en lecturas. Puede venir null si ese servicio no responde", accessMode = Schema.AccessMode.READ_ONLY)
     private EntrenadorInfoDTO entrenador;
 
+    @Schema(description = "Asistentes registrados actualmente. Solo se cambia vía PATCH /api/classes/{id}/ocupacion", example = "0", accessMode = Schema.AccessMode.READ_ONLY)
+    private int ocupacionActual;
+
     public ClaseDTO(Long id, String nombre, LocalDateTime horario, int capacidadMaxima, Long entrenadorId) {
         this.id = id;
         this.nombre = nombre;

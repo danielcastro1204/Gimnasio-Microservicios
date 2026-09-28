@@ -33,6 +33,20 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: monitoreo-grupo
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        # class-service no manda __TypeId__ (ver su application.yml). Sin ese
+        # header, JsonDeserializer necesita que le digamos a qué clase local
+        # mapear el JSON: mismo criterio que TypePrecedence.INFERRED en Rabbit.
+        spring.json.value.default.type: co.analisys.notification.domain.event.OcupacionClaseEvent
+        spring.json.use.type.headers: false
 
 # notification-service es el suscriptor: declara el exchange topic compartido
 # ("gym.events") junto con SUS PROPIAS colas y bindings. Los publicadores
@@ -40,6 +54,8 @@ spring:
 gym:
   events:
     exchange: ${GYM_EVENTS_EXCHANGE:gym.events}
+  kafka:
+    ocupacion-topic: ${OCUPACION_TOPIC:ocupacion-clases}
 
 notification:
   queues:

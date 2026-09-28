@@ -44,4 +44,21 @@ public class Clase {
      */
     @NotNull(message = "El id del entrenador es obligatorio")
     private Long entrenadorId;
+
+    /**
+     * Cantidad de asistentes registrados actualmente (Parte 3.1 del taller:
+     * monitoreo en tiempo real vía Kafka). Empieza en 0 al programar la clase
+     * y se actualiza solo a través de PATCH /api/classes/{id}/ocupacion.
+     */
+    @Min(value = 0, message = "La ocupación actual no puede ser negativa")
+    private int ocupacionActual = 0;
+
+    public Clase(Long id, String nombre, LocalDateTime horario, int capacidadMaxima, Long entrenadorId) {
+        this.id = id;
+        this.nombre = nombre;
+        this.horario = horario;
+        this.capacidadMaxima = capacidadMaxima;
+        this.entrenadorId = entrenadorId;
+        this.ocupacionActual = 0;
+    }
 }

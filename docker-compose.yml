@@ -13,3 +13,47 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: gym-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-log:/var/lib/zookeeper/log
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: gym-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "29092:29092" # bootstrap server para los microservicios (fuera de docker)
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Habilita auto-creación por si algún productor/consumidor arranca antes
+      # que el NewTopic bean de class-service; los @Bean NewTopic siguen dando
+      # el control real sobre particiones/nombre.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # Parte 3.4 (recuperacion): retencion por defecto de los logs del broker (7 dias).
+      # datos-entrenamiento la sobrescribe a 30 dias a nivel de topic (ver KafkaConfig).
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+    volumes:
+      # Los logs sobreviven a "docker compose down": sin esto, un reinicio borraria justo
+      # los datos que la recuperacion necesita releer.
+      - kafka-data:/var/lib/kafka/data
+
+volumes:
+  kafka-data:
+  zookeeper-data:
+  zookeeper-log:

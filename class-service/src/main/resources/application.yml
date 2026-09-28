@@ -43,6 +43,16 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        # No mandar el __TypeId__ (clase de este microservicio): el consumidor
+        # (notification-service) no tiene co.analisys.clase.* en su classpath.
+        # Mismo criterio que ya se usa para RabbitMQ (INFERRED en RabbitConfig).
+        spring.json.add.type.headers: false
 
 # URL de trainer-service, configurable por variable de entorno para despliegues
 # distintos a localhost (docker-compose, kubernetes, etc.) sin hardcodear la URL.
@@ -56,3 +66,9 @@ services:
 gym:
   events:
     exchange: ${GYM_EVENTS_EXCHANGE:gym.events}
+  kafka:
+    # Topic de streaming para monitoreo en tiempo real de ocupación de clases
+    # (Parte 3 del taller). 3 particiones: alcanza para repartir por clase
+    # (se publica con key = claseId) sin sobre-dimensionar para un solo broker local.
+    ocupacion-topic: ${OCUPACION_TOPIC:ocupacion-clases}
+    ocupacion-particiones: ${OCUPACION_PARTICIONES:3}

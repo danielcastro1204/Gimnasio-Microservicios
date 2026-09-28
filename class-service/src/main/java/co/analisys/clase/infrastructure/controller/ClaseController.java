@@ -1,5 +1,6 @@
 package co.analisys.clase.infrastructure.controller;
 
+import co.analisys.clase.application.dto.ActualizarOcupacionRequest;
 import co.analisys.clase.application.dto.ApiErrorResponse;
 import co.analisys.clase.application.dto.ClaseDTO;
 import co.analisys.clase.application.service.ClaseApplicationService;
@@ -93,5 +94,26 @@ public class ClaseController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancelarClase(@PathVariable Long id) {
         claseApplicationService.cancelarClase(id);
+    }
+
+    @Operation(summary = "Actualizar la ocupación actual de una clase",
+            description = "Registra cuántos asistentes hay ahora mismo en la clase y publica el cambio " +
+                    "en el topic Kafka \"ocupacion-clases\" para monitoreo en tiempo real (notification-service).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Ocupación actualizada y evento publicado en Kafka",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ClaseDTO.class))),
+            @ApiResponse(responseCode = "409", description = "La ocupación supera la capacidad máxima de la clase",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "No existe una clase con ese id",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+    @PatchMapping("/{id}/ocupacion")
+    public ClaseDTO actualizarOcupacion(
+            @Parameter(description = "Id de la clase", example = "1") @PathVariable Long id,
+            @Valid @RequestBody ActualizarOcupacionRequest request) {
+        return claseApplicationService.actualizarOcupacion(id, request.getOcupacionActual());
     }
 }

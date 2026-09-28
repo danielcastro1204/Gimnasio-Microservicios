@@ -38,6 +38,9 @@ public class SecurityConfig {
                 // que aplica más abajo a "/api/members/**" en general.
                 .requestMatchers(HttpMethod.GET, "/api/members/payments/**")
                     .hasAnyRole("ADMIN", "TRAINER")
+                // Un MEMBER puede registrar sus propios datos de entrenamiento (Kafka).
+                .requestMatchers(HttpMethod.POST, "/api/members/*/training-data")
+                    .hasAnyRole("ADMIN", "TRAINER", "MEMBER")
                 .requestMatchers(HttpMethod.POST, "/api/members/*/payments")
                     .hasAnyRole("ADMIN", "TRAINER")
                 .requestMatchers(HttpMethod.GET, "/api/members/**")

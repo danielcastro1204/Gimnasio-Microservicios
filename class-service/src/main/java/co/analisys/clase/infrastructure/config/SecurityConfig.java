@@ -37,6 +37,8 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "TRAINER", "MEMBER")
                 .requestMatchers(HttpMethod.POST, "/api/classes/**")
                     .hasAnyRole("ADMIN", "TRAINER")
+                .requestMatchers(HttpMethod.PATCH, "/api/classes/**")
+                    .hasAnyRole("ADMIN", "TRAINER")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
