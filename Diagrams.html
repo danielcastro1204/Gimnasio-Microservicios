@@ -77,13 +77,13 @@
 <body>
 
     <div class="header">
-        <h1>Arquitectura de Microservicios: Sistema de Gestión</h1>
-        <p>Modelos estructurales, estratégicos y dinámicos</p>
+        <h1>Arquitectura de Microservicios: Sistema de Gestión de un Gimnasio</h1>
+        <p>Seguridad (Keycloak) · APIs RESTful · RabbitMQ (pub/sub + DLQ) · Kafka (streaming + Kafka Streams + recuperación)</p>
     </div>
 
     <div class="diagram-section">
-        <h2 class="diagram-title">0. (Opcional) Antes vs. Después: Transición de Arquitectura</h2>
-        <p class="description">Ancla visual para el inicio de la presentación. Contraste inmediato de la separación de responsabilidades.</p>
+        <h2 class="diagram-title">0. Antes vs. Después: Transición de Arquitectura</h2>
+        <p class="description">Ancla visual para el inicio de la presentación. Del monolito a 6 microservicios independientes, cada uno con su propia base de datos, comunicándose por REST, RabbitMQ y Kafka.</p>
         <div class="mermaid-container">
             <pre class="mermaid">
                 flowchart LR
@@ -94,66 +94,95 @@
                     end
                     
                     subgraph Microservicios ["Arquitectura de Microservicios (Después)"]
-                        MS1["member-service"]
-                        MS2["class-service"]
-                        MS3["trainer-service"]
-                        MS4["equipment-service"]
-                        
+                        MS1["member-service<br>:8081"]
+                        MS2["class-service<br>:8082"]
+                        MS3["trainer-service<br>:8083"]
+                        MS4["equipment-service<br>:8084"]
+                        MS5["notification-service<br>:8085"]
+                        MS6["analytics-service<br>:8086"]
+
                         MS1 --- BD1[("memberdb")]
                         MS2 --- BD2[("classdb")]
                         MS3 --- BD3[("trainerdb")]
                         MS4 --- BD4[("equipmentdb")]
-                        
-                        MS2 -. "&lt;&lt;use&gt;&gt;" .-> MS3
+                        MS5 --- BD5[("notificationdb")]
+                        MS6 --- BD6[("analyticsdb<br>(archivo)")]
+
+                        MS2 -. "&lt;&lt;use&gt;&gt; REST" .-> MS3
+                        MS1 -. "RabbitMQ / Kafka" .-> MS5
+                        MS2 -. "RabbitMQ / Kafka" .-> MS5
+                        MS1 -. "Kafka" .-> MS6
                     end
                     
-                    Monolito ===>|Refactorización DDD| Microservicios
+                    Monolito ===>|"Refactorización DDD +<br>Keycloak + RabbitMQ + Kafka"| Microservicios
             </pre>
         </div>
     </div>
 
     <div class="diagram-section">
         <h2 class="diagram-title">1. Diagrama de Despliegue UML</h2>
-        <p class="description">Vista física: topología formal sin cruce de líneas, puertos documentados y notas aclaratorias técnicas.</p>
+        <p class="description">Vista física completa: los 6 microservicios, sus bases de datos, el servidor de identidad (Keycloak) y los dos brokers de mensajería (RabbitMQ y Kafka), con protocolos y puertos.</p>
         <div class="mermaid-container">
             <pre class="mermaid">
                 flowchart TB
                     subgraph Dispositivos ["&lt;&lt;device&gt;&gt; Dispositivos del Cliente"]
                         UI["Cliente (Postman / Web App)"]
                     end
-                    
-                    subgraph Servidor ["&lt;&lt;execution environment&gt;&gt; Entorno de Ejecución (Host Local)"]
-                        J1["&lt;&lt;artifact&gt;&gt;<br>member-service.jar<br>(Puerto 8081)"]
-                        J2["&lt;&lt;artifact&gt;&gt;<br>class-service.jar<br>(Puerto 8082)"]
-                        J3["&lt;&lt;artifact&gt;&gt;<br>trainer-service.jar<br>(Puerto 8083)"]
-                        J4["&lt;&lt;artifact&gt;&gt;<br>equipment-service.jar<br>(Puerto 8084)"]
-                        
-                        %% Forzar alineación horizontal
-                        J1 ~~~ J2 ~~~ J3 ~~~ J4
+
+                    subgraph IAM ["&lt;&lt;execution environment&gt;&gt; Identidad"]
+                        KC["&lt;&lt;artifact&gt;&gt;<br>Keycloak :8080<br>realm gimnasio<br>(JWT / OAuth2)"]
                     end
-                    
+
+                    subgraph Servidor ["&lt;&lt;execution environment&gt;&gt; Entorno de Ejecución (Host Local)"]
+                        J1["&lt;&lt;artifact&gt;&gt;<br>member-service.jar<br>(:8081)"]
+                        J2["&lt;&lt;artifact&gt;&gt;<br>class-service.jar<br>(:8082)"]
+                        J3["&lt;&lt;artifact&gt;&gt;<br>trainer-service.jar<br>(:8083)"]
+                        J4["&lt;&lt;artifact&gt;&gt;<br>equipment-service.jar<br>(:8084)"]
+                        J5["&lt;&lt;artifact&gt;&gt;<br>notification-service.jar<br>(:8085)"]
+                        J6["&lt;&lt;artifact&gt;&gt;<br>analytics-service.jar<br>(:8086)"]
+
+                        J1 ~~~ J2 ~~~ J3 ~~~ J4 ~~~ J5 ~~~ J6
+                    end
+
+                    subgraph Mensajeria ["&lt;&lt;execution environment&gt;&gt; Brokers de Mensajería"]
+                        MQ{{"&lt;&lt;artifact&gt;&gt;<br>RabbitMQ :5672<br>exchange gym.events<br>colas pagos-queue / pagos-dlq"}}
+                        KF{{"&lt;&lt;artifact&gt;&gt;<br>Kafka :29092<br>topics ocupacion-clases,<br>datos-entrenamiento, resumen-entrenamiento"}}
+                    end
+
                     subgraph BD ["Servidores de Bases de Datos"]
                         DB1[("&lt;&lt;database&gt;&gt;<br>memberdb")]
                         DB2[("&lt;&lt;database&gt;&gt;<br>classdb")]
                         DB3[("&lt;&lt;database&gt;&gt;<br>trainerdb")]
                         DB4[("&lt;&lt;database&gt;&gt;<br>equipmentdb")]
-                        NoteDB["Nota UML: H2 en memoria.<br>Los datos se reinician en<br>cada arranque del servicio."]
-                        
-                        %% Alinear debajo de los artefactos
-                        DB1 ~~~ DB2 ~~~ DB3 ~~~ DB4 ~~~ NoteDB
+                        DB5[("&lt;&lt;database&gt;&gt;<br>notificationdb")]
+                        DB6[("&lt;&lt;database&gt;&gt;<br>analyticsdb (archivo)")]
+                        NoteDB["Nota UML: H2 en memoria<br>en los 5 primeros (se reinician<br>en cada arranque). analyticsdb<br>es en archivo: guarda los<br>checkpoints de Kafka."]
+
+                        DB1 ~~~ DB2 ~~~ DB3 ~~~ DB4 ~~~ DB5 ~~~ DB6 ~~~ NoteDB
                     end
-                    
-                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8081" --> J1
-                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8082" --> J2
-                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8083" --> J3
-                    UI -- "&lt;&lt;protocol&gt;&gt; HTTP :8084" --> J4
-                    
+
+                    UI -- "HTTP :8081..8086" --> J1 & J2 & J3 & J4 & J5 & J6
+                    J1 & J2 & J3 & J4 & J5 & J6 -. "&lt;&lt;protocol&gt;&gt; validar JWT" .-> KC
+
                     J1 --- DB1
                     J2 --- DB2
                     J3 --- DB3
                     J4 --- DB4
-                    
-                    J2 -. "&lt;&lt;protocol&gt;&gt; HTTP/REST<br>(Única dependencia de negocio<br>entre microservicios)" .-> J3
+                    J5 --- DB5
+                    J6 --- DB6
+
+                    J2 -. "&lt;&lt;protocol&gt;&gt; HTTP/REST<br>(única dependencia síncrona)" .-> J3
+
+                    J1 -- "publica member.registered" --> MQ
+                    J2 -- "publica class.created/updated/cancelled" --> MQ
+                    J1 -- "publica/consume pagos-queue / pagos-dlq" --> MQ
+                    MQ -- "consume (pub/sub)" --> J5
+
+                    J2 -- "produce ocupacion-clases" --> KF
+                    KF -- "consume ocupacion-clases" --> J5
+                    J1 -- "produce datos-entrenamiento" --> KF
+                    KF -- "Kafka Streams + recovery consumer" --> J6
+                    J6 -- "produce resumen-entrenamiento" --> KF
 
                     style NoteDB fill:#fff2cc,stroke:#d6b656,stroke-width:2px,stroke-dasharray: 5 5
             </pre>
@@ -162,42 +191,61 @@
 
     <div class="diagram-section">
         <h2 class="diagram-title">2. Diagrama de Componentes UML</h2>
-        <p class="description">Vista lógica: Detalle de interfaces expuestas (lollipops) con sus respectivos endpoints y dependencias lógicas.</p>
+        <p class="description">Vista lógica: interfaces REST expuestas (lollipops), dependencias síncronas y los puertos de publicación/suscripción asíncrona de cada componente.</p>
         <div class="mermaid-container">
             <pre class="mermaid">
                 flowchart TB
-                    %% Interfaces proporcionadas con endpoints
-                    I_Mem(("API Members<br>POST /api/members<br>GET /api/members"))
-                    I_Class(("API Classes<br>POST /api/classes<br>GET /api/classes"))
+                    I_Mem(("API Members<br>POST /api/members<br>GET /api/members<br>POST /{id}/payments<br>POST /{id}/training-data"))
+                    I_Class(("API Classes<br>POST/PUT/DELETE /api/classes<br>PATCH /{id}/ocupacion"))
                     I_Train(("API Trainers<br>GET /api/trainers/{id}/exists"))
                     I_Equip(("API Equipment<br>POST /api/equipment<br>GET /api/equipment"))
-                    
-                    %% Componentes
+                    I_Notif(("API Notifications<br>GET /api/notifications<br>GET /occupancy"))
+                    I_Ana(("API Analytics<br>GET /training/{id}/summary<br>GET /recovery/status"))
+
                     C_Mem["&lt;&lt;component&gt;&gt; Member Service"]
                     C_Class["&lt;&lt;component&gt;&gt; Class Service"]
                     C_Train["&lt;&lt;component&gt;&gt; Trainer Service"]
                     C_Equip["&lt;&lt;component&gt;&gt; Equipment Service"]
-                    
-                    %% Conexiones a interfaces
+                    C_Notif["&lt;&lt;component&gt;&gt; Notification Service"]
+                    C_Ana["&lt;&lt;component&gt;&gt; Analytics Service"]
+
                     I_Mem --- C_Mem
                     I_Class --- C_Class
                     I_Train --- C_Train
                     I_Equip --- C_Equip
-                    
-                    %% Relación de uso (dependency / socket)
-                    C_Class -. "&lt;&lt;use&gt;&gt;" .-> I_Train
+                    I_Notif --- C_Notif
+                    I_Ana --- C_Ana
+
+                    C_Class -. "&lt;&lt;use&gt;&gt; REST" .-> I_Train
+
+                    P_Evt(("&lt;&lt;port&gt;&gt; gym.events<br>RabbitMQ exchange"))
+                    P_Pago(("&lt;&lt;port&gt;&gt; pagos-queue / pagos-dlq<br>RabbitMQ colas"))
+                    P_Ocup(("&lt;&lt;port&gt;&gt; ocupacion-clases<br>Kafka topic"))
+                    P_Entr(("&lt;&lt;port&gt;&gt; datos-entrenamiento<br>Kafka topic"))
+
+                    C_Mem -- "publica member.registered" --> P_Evt
+                    C_Class -- "publica class.*" --> P_Evt
+                    P_Evt -- "consume (bindings member.registered, class.*)" --> C_Notif
+
+                    C_Mem -- "publica / consume" --> P_Pago
+
+                    C_Class -- "produce" --> P_Ocup
+                    P_Ocup -- "consume" --> C_Notif
+
+                    C_Mem -- "produce" --> P_Entr
+                    P_Entr -- "consume (Streams + recovery)" --> C_Ana
             </pre>
         </div>
     </div>
 
     <div class="diagram-section">
         <h2 class="diagram-title">3. Mapa de Contextos (Domain-Driven Design)</h2>
-        <p class="description">Vista estratégica: Patrones de integración explícitos y clasificación de dominios (Core vs Supporting).</p>
+        <p class="description">Vista estratégica con los 6 bounded contexts. Notifications y Analytics son Supporting Subdomains puramente reactivos: no exponen casos de uso de negocio propios, solo consumen eventos.</p>
         <div class="mermaid-container">
             <pre class="mermaid">
                 flowchart LR
                     subgraph BC1 ["Bounded Context: Membership"]
-                        A1["Aggregate: Miembro<br>(Generic Subdomain - Separate Ways)"]
+                        A1["Aggregate: Miembro, Pago<br>(Generic Subdomain)"]
                     end
                     
                     subgraph BC2 ["Bounded Context: Scheduling"]
@@ -211,17 +259,28 @@
                     subgraph BC4 ["Bounded Context: Inventory"]
                         A4["Aggregate: Equipo<br>(Generic Subdomain - Separate Ways)"]
                     end
-                    
-                    %% Relaciones DDD explícitas
+
+                    subgraph BC5 ["Bounded Context: Notifications"]
+                        A5["Aggregate: Notificacion, OcupacionClase<br>(Supporting - Conformist,<br>event-driven puro)"]
+                    end
+
+                    subgraph BC6 ["Bounded Context: Training Analytics"]
+                        A6["Aggregate: ResumenEntrenamiento<br>(Supporting - Conformist,<br>event-driven puro)"]
+                    end
+
                     BC2 -- "Downstream (C) <br> Consume datos <br> (Customer/Supplier)" --> BC3
                     BC3 -. "Upstream (S) <br> Provee verificación <br> (Customer/Supplier)" .- BC2
+
+                    BC1 -. "Published Language<br>member.registered / pagos-queue" .-> BC5
+                    BC2 -. "Published Language<br>class.* / ocupacion-clases" .-> BC5
+                    BC1 -. "Published Language<br>datos-entrenamiento" .-> BC6
             </pre>
         </div>
     </div>
 
     <div class="diagram-section">
-        <h2 class="diagram-title">4. Diagrama de Secuencia (Comportamiento Dinámico)</h2>
-        <p class="description">Vista dinámica: Flujo de peticiones HTTP/REST y validación sincrónica entre microservicios.</p>
+        <h2 class="diagram-title">4. Secuencia: Validación Síncrona REST (Class ↔ Trainer)</h2>
+        <p class="description">Única comunicación síncrona entre microservicios: class-service valida contra trainer-service antes de programar una clase.</p>
         <div class="mermaid-container">
             <pre class="mermaid">
                 sequenceDiagram
@@ -241,8 +300,155 @@
                         MS-->>Cliente: 201 Created
                     else Trainer missing
                         TS-->>MS: 404 Not Found
-                        MS-->>Cliente: 400 Bad Request
+                        MS-->>Cliente: 409 Conflict
                     end
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">5. Secuencia: RabbitMQ Publish/Subscribe (inscripción y cambios de horario)</h2>
+        <p class="description">member-service y class-service publican en el exchange topic gym.events sin conocer a sus suscriptores; notification-service declara sus propias colas y bindings (member.registered, class.*).</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                sequenceDiagram
+                    autonumber
+                    actor Cliente
+                    participant MS as Member Service
+                    participant EX as Exchange gym.events
+                    participant NS as Notification Service
+                    participant DB as notificationdb
+
+                    Cliente->>MS: POST /api/members
+                    MS->>MS: save(Miembro)
+                    MS-->>Cliente: 201 Created
+                    MS-)EX: publica member.registered
+
+                    EX-)NS: enruta a notification.member-registered.queue
+                    NS->>DB: save(Notificacion BIENVENIDA_MIEMBRO)
+                    Note right of NS: Fire-and-forget real:<br>si Notification cae, RabbitMQ<br>retiene el mensaje (cola durable)
+
+                    Cliente->>NS: GET /api/notifications
+                    NS-->>Cliente: 200 OK (lista)
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">6. Secuencia: Cola de Trabajo con Dead Letter Queue (pagos)</h2>
+        <p class="description">Cola punto a punto pagos-queue con reintentos (Spring Retry, backoff 1s/2s/4s); al agotarse se rechaza sin reencolar y el mensaje cae en pagos-dlq.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                sequenceDiagram
+                    autonumber
+                    actor Cliente
+                    participant MS as Member Service
+                    participant PQ as pagos-queue
+                    participant DLQ as pagos-dlq
+                    participant DB as memberdb (tabla pagos)
+
+                    Cliente->>MS: POST /{miembroId}/payments
+                    MS->>DB: save(Pago PENDIENTE)
+                    MS-->>Cliente: 202 Accepted
+                    MS-)PQ: publica PagoEvent
+
+                    PQ-)MS: PagoConsumer.procesarPago
+                    alt Pago exitoso
+                        MS->>DB: marcarExitoso(pagoId)
+                    else Falla (simularFallo=true)
+                        loop hasta 3 intentos (backoff 1s/2s/4s)
+                            MS-->>MS: reintenta procesarPago
+                        end
+                        MS--)DLQ: reject sin reencolar (agotó reintentos)
+                        DLQ-)MS: PagoDeadLetterConsumer
+                        MS->>DB: marcarFallido(pagoId, detalle)
+                    end
+
+                    Cliente->>MS: GET /payments/{id}
+                    MS-->>Cliente: 200 OK (EXITOSO | FALLIDO)
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">7. Secuencia: Kafka Streaming en Tiempo Real (ocupación de clases)</h2>
+        <p class="description">class-service produce cada cambio de ocupación en el topic ocupacion-clases (key = claseId, mantiene el orden); notification-service lo consume y mantiene el "dashboard" en tiempo real.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                sequenceDiagram
+                    autonumber
+                    actor Cliente
+                    participant CS as Class Service
+                    participant T as Topic ocupacion-clases<br>(3 particiones)
+                    participant NS as Notification Service
+                    participant DB as notificationdb
+
+                    Cliente->>CS: PATCH /api/classes/{id}/ocupacion
+                    CS->>CS: actualiza ocupacionActual
+                    CS-)T: send(key=claseId, OcupacionClaseEvent)
+
+                    T-)NS: OcupacionClaseConsumer (groupId monitoreo-grupo)
+                    NS->>DB: upsert OcupacionClase (último estado por clase)
+
+                    Cliente->>NS: GET /api/notifications/occupancy/{claseId}
+                    NS-->>Cliente: 200 OK (ocupacionActual/capacidadMaxima)
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">8. Kafka Streams: análisis de entrenamiento en ventanas de 7 días</h2>
+        <p class="description">member-service produce datos-entrenamiento (key = miembroId); analytics-service agrega con Kafka Streams (groupByKey + ventana de 7 días) en el state store resumen-entrenamiento-store y publica cada actualización en resumen-entrenamiento.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                flowchart LR
+                    Client([Cliente]) -->|"POST /{id}/training-data"| MS1[Member Service]
+                    MS1 -->|"key = miembroId"| T1[["datos-entrenamiento<br/>3 particiones · retención 30 días"]]
+
+                    subgraph AN["Analytics Service :8086"]
+                        KS["Kafka Streams<br/>groupByKey + ventana 7 días"]
+                        ST[("state store<br/>resumen-entrenamiento-store")]
+                        KS --> ST
+                    end
+
+                    T1 --> KS
+                    KS -->|"cada actualización"| T2[["resumen-entrenamiento"]]
+                    ST -.->|"GET /training/{id}/summary<br/>GET /training/{id}/history"| Client
+            </pre>
+        </div>
+    </div>
+
+    <div class="diagram-section">
+        <h2 class="diagram-title">9. Recuperación ante fallos con el log de Kafka (checkpoints)</h2>
+        <p class="description">En paralelo al Stream Processor, un consumidor propio reconstruye el historial y guarda un checkpoint (topic, partición, offset) en la misma transacción que el dato. Al reiniciar, retoma en checkpoint + 1; sin checkpoint, reproduce el log completo.</p>
+        <div class="mermaid-container">
+            <pre class="mermaid">
+                sequenceDiagram
+                    autonumber
+                    participant T as Topic datos-entrenamiento
+                    participant REC as RecuperacionService<br>(consumer assign + seek)
+                    participant DB as analyticsdb (archivo)<br>kafka_checkpoints /<br>entrenamientos_registrados
+
+                    Note over REC,DB: Arranque normal
+                    REC->>DB: cargarCheckpoints("datos-entrenamiento")
+                    DB-->>REC: {particion: últimoOffset, ...}
+                    REC->>T: seek(particion, últimoOffset + 1)
+                    T-)REC: poll() -> nuevos registros
+                    REC->>DB: TX: save(registro) + save(checkpoint)
+
+                    Note over REC,DB: Falla el proceso (se cae o error)
+                    REC--xREC: crash / excepción
+                    Note over REC: Se reinicia el hilo
+
+                    REC->>DB: cargarCheckpoints (recupera el último guardado)
+                    REC->>T: seek(particion, checkpoint + 1)
+                    Note right of T: No se pierde ni duplica:<br/>restricción única (topic, partición, offset)
+
+                    Note over REC,DB: POST /recovery/reset (simula pérdida total)
+                    REC->>DB: borra datos y checkpoints
+                    REC->>T: seek al primer offset disponible
+                    T-)REC: reproduce el log completo
+                    REC->>DB: reconstruye el estado desde cero
             </pre>
         </div>
     </div>
